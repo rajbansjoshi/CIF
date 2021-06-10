@@ -26,6 +26,7 @@ let activityChangeNotifyParameters;
 let sendWorkModeInfoParameters;
 const expandSoftphoneParameters = [];
 const INTERACTION_API = 'interactionApi';
+const SET_SOFTPHONE_WIDTH = 'setDynamicsSoftphoneWidth';
 const SET_SOFTPHONE_HEIGHT = 'setSoftphoneHeight';
 const SCREEN_POP = 'screenPop';
 const GET_USER_INFO = 'getUserInfo';
@@ -354,6 +355,9 @@ customAmcCif.processMessage = function(message, callback) {
         case GET_USER_INFO:
             getUserInfo(message);
             break;
+        case SET_SOFTPHONE_WIDTH:
+            setDynamicsSoftphoneWidth(message);
+            break;
         case SET_SOFTPHONE_HEIGHT:
             setSoftphoneHeight(message);
             break;
@@ -625,12 +629,17 @@ function reportTrace(level, message) {
     else {
         console.log('customAmcCif warning: trace is not enabled');
     }
+    console.log('customAmcCif warning: trace is not enabled');
 }
+
+// This method is called to create or update a Phone call activity in Dynamics. It can also be customized to create any other custom object in the place of Phone call activity
+// The params.logString contains all the data to be passed on to the call activity.
 function saveLog(params) {
     if (params.logString !== {}) {
         try {
             const logString = params.logString;
             const logObject = JSON.parse(logString);
+	    // This is the object that would be used to post the final data to the Dynamics CRUD method.
             const finalLogObject = new Object();
             const requestCounterLocal = getRequestCounter();
             const activityDetails = {
@@ -647,6 +656,7 @@ function saveLog(params) {
                 reportTrace('logDebug', 'customAmcCif.saveLog message: Defaulting Call From/ To to systemuser');
             }
             mapActivityDetails[requestCounterLocal].callDirectionCode = logObject['directioncode'];
+	    // In case the activity has already been created and has an acitivity id, then it needs to be updated.
             if (logObject.hasOwnProperty('ActivityId')) {
                 reportTrace('logDebug', 'customAmcCif.saveLog message: Activity being updated with Activity Id:- '
                     + logObject['ActivityId'] + ' and data:- ' + params.logString);
@@ -2034,18 +2044,19 @@ function getParameterByName(name, url) {
 }
 function initiate(params) {
     Microsoft.CIFramework.addHandler('onmodechanged', onModeChanged);
-    Microsoft.CIFramework.addHandler("onsizechanged", function () { return Promise.resolve(); });
-    Microsoft.CIFramework.addHandler("onSessionClosed", function () {
+    Microsoft.CIFramework.addHandler('onsizechanged', function () { return Promise.resolve(); });
+    Microsoft.CIFramework.addHandler('onSessionClosed', function () {
         try {
-          verifyAndCreateSession();
-        }catch(ex) {
-          reportTrace('logError','customAmcCif.onSessionClosed verifyAndCreateSession is sending:' + ex.message);
+            verifyAndCreateSession();
+        }
+        catch (ex) {
+            reportTrace('logError', 'customAmcCif.onSessionClosed verifyAndCreateSession is sending:' + ex.message);
         }
         return Promise.resolve();
     });
-    Microsoft.CIFramework.addHandler("onSessionSwitched", function (event) {
+    Microsoft.CIFramework.addHandler('onSessionSwitched', function (event) {
         try {
-            let sessionSwitchedData = JSON.parse(event);
+            const sessionSwitchedData = JSON.parse(event);
             if (sessionSwitchedData.focused) {
                 notifyCount = 0;
             }
@@ -2101,14 +2112,14 @@ function verifyAndCreateSession() {
             Microsoft.CIFramework.canCreateSession().then(function (result) {
                 if (result) { // If TRUE
                     reportTrace('logDebug', 'customAmcCif.verifyAndCreateSession canCreateSession ' + JSON.stringify(result));
-                    let templateName = "DaVinci Agent Session";
-                    let queryparamTemplateName = getParameterByName("STName");
+                    let templateName = 'DaVinci Agent Session';
+                    const queryparamTemplateName = getParameterByName('STName');
                     if (queryparamTemplateName) {
                         templateName = queryparamTemplateName;
                     }
-                    let createSessionDetails = {
-                        "templateName": templateName,
-                        "templateParameters": {}
+                    const createSessionDetails = {
+                        'templateName': templateName,
+                        'templateParameters': {}
                     };
                     Microsoft.CIFramework.createSession(createSessionDetails).then(function success(sessionId) {
                         dynamicsSessionId = sessionId;
@@ -2235,6 +2246,12 @@ function raiseEvent() {
         }
     }
 }
+function setSoftphoneWidth(message) {
+}
+function setDynamicsSoftphoneWidth(message) {
+    Microsoft.CIFramework.setWidth(message.width);
+}
+
 // End - AMC Standard functionality
 
 // Begin - Custom functionality
